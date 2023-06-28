@@ -3,7 +3,8 @@ import os
 print('DB initialized')
 
 # localMemory = []
-
+if len(os.listdir('data/')) == 0:
+    open('data/data-0.txt', 'x')
 sortedDir = [os.path.join('data/', f) for f in os.listdir('data/')
              if os.path.isfile(os.path.join('data/', f))]
 
@@ -17,8 +18,11 @@ headerLength = 3
 recordLength = 5
 latestFile = open(sortedDir[0], 'r+')
 while True:
+    try:
+        inputValue = input()
+    except EOFError:
+        break
 
-    inputValue = input()
     if inputValue == 'fini':
         break
 
@@ -87,7 +91,7 @@ while True:
                             file.write('000')
                         file.seek(0)
 
-                    # 2. update bitmap
+                    # 2. reset bitmap
                     bitmap = 0
                     # 3. update directory we are using
                     sortedDir = [os.path.join('data/', f) for f in os.listdir('data/')
@@ -117,3 +121,6 @@ while True:
                     print(
                         f"pageIndex : {pageIndex}, addingIndex : {addingIndex}")
                     break
+
+    else:
+        raise RuntimeError('input shold be read, write or delete')
