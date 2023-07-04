@@ -3,14 +3,12 @@ from bitmap import Bitmap
 
 class Page:
     def __init__(self, bitmap=0b0) -> None:
+        self.data = []
         self.bitmap = Bitmap(bitmap)
-        self.data = [bitmap]
 
     def read(self, index: int) -> list[int] or None:
         # check bitmap the given location is available
-        bitmap = Bitmap(self.bitmap)
-        if (bitmap.get(index)):
-            print('inside get')
+        if (self.bitmap.get(index, findFreeSpace=True)):
             return None
 
         wordLength = 5
@@ -20,5 +18,5 @@ class Page:
         return self.data[startPoint: startPoint + wordLength]
 
     def delete(self, index: int) -> None:
-        bitmap = Bitmap(self.bitmap)
-        bitmap.unset(index)
+        self.bitmap.unset(index)
+        self.data[0] = self.bitmap.data
