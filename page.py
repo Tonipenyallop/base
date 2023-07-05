@@ -1,22 +1,39 @@
 from bitmap import Bitmap
 
 
+wordLength = 5
+bitmapLength = 1
+
+
 class Page:
-    def __init__(self, bitmap=0b0) -> None:
-        self.data = []
-        self.bitmap = Bitmap(bitmap)
+    def __init__(self, data: list[str]) -> None:
+        self.data = data
 
     def read(self, index: int) -> list[int] or None:
         # check bitmap the given location is available
-        if (self.bitmap.get(index, findFreeSpace=True)):
+        bitmap = Bitmap(self.data[0])
+        if (bitmap.get(index, findFreeSpace=True)):
             return None
-
-        wordLength = 5
-        bitmapLength = 1
 
         startPoint = (index * wordLength) + bitmapLength
         return self.data[startPoint: startPoint + wordLength]
 
     def delete(self, index: int) -> None:
-        self.bitmap.unset(index)
-        self.data[0] = self.bitmap.data
+        bitmap = Bitmap(self.data[0])
+        bitmap.unset(index)
+        self.data[0] = bitmap.data
+
+    def write(self, input: list[str]) -> int:
+        bitmap = Bitmap(self.data[0])
+        bitmapLength = 1
+        nextFreeSlot = bitmap.nextFreeIndex()
+        if (nextFreeSlot == -1):
+            return -1
+
+        startPoint = (nextFreeSlot * wordLength) + bitmapLength
+        self.data[startPoint: startPoint + wordLength] = input
+
+        bitmap.set(nextFreeSlot)
+        self.data[0] = bitmap.data
+
+        return nextFreeSlot
