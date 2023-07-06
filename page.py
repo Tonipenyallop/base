@@ -3,10 +3,13 @@ from bitmap import Bitmap
 
 wordLength = 5
 bitmapLength = 1
+bitmapSize = 8
+pageLength = wordLength * bitmapSize + bitmapLength
 
 
 class Page:
-    def __init__(self, data: list[str]) -> None:
+    def __init__(self, data: bytes) -> None:
+        assert len(data) == pageLength
         self.data = data
 
     def read(self, index: int) -> list[int] or None:
