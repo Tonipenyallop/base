@@ -1,7 +1,7 @@
 # Video Links
 
-https://www.youtube.com/@CS186Berkeley/playlists
-https://cs186berkeley.net/
+- https://www.youtube.com/@CS186Berkeley/playlists
+- https://cs186berkeley.net/
 
 # Create database from scratch
 
