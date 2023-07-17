@@ -41,6 +41,3 @@ class Page:
 
     def hasFreeSpace(self) -> bool:
         return Bitmap(self.data[0], bitmapSize=self.bitmapSize).nextFreeIndex() != -1
-
-    def getCurrentIndex(self) -> int:
-        return self.currentPageIndex
