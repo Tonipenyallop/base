@@ -29,7 +29,7 @@ class FileManager:
     def writePage(self, index, page) -> None:
         pass
 
-    def getUnfilledIndexAndPage(self) -> list[int, Page]:
+    def getUnfilledIndexAndPage(self) -> tuple[int, Page]:
         unfilledPageIndex = 0
         unfilledPage = None
         # while we haven't found the page that we're looking for
