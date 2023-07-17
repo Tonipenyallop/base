@@ -62,21 +62,27 @@ while True:
         print(f"{pageIndex}:{rowIndex} was deleted successfully")
 
     if inputValue[:5] == 'write':
+        # 1. get unfilled index and page
         unfilledPageIndex, unfilledPage = fileManager.getUnfilledIndexAndPage()
         writeValue = inputValue[6:]
         inputAsBytes = bytearray(writeValue, encoding='utf-8')
+
         # for local memory
+        # 2. check bitmap is full or not. if it's full,
         record = unfilledPage.write(inputAsBytes)
         if record == -1:
             data = bytearray(pageLength)
+            # 2.a. create new page
             unfilledPage = Page(data, wordLength, bitmapLength, bitmapSize)
+            # 2.b. insert new data to local memory
             record = unfilledPage.write(inputAsBytes)
-            # todo taesu 1. needs to update new page index to be latest
+            # 2.c update index as new page is created
             unfilledPageIndex += 1
 
         print(f'{unfilledPageIndex}:{record}')
 
         # for DB
+        # 3. update DB
         startPageIndex = unfilledPageIndex * pageLength
         file.seek(startPageIndex)
         file.write(unfilledPage.data)

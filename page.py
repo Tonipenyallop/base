@@ -12,7 +12,7 @@ class Page:
         self.pageLength = self.wordLength * self.bitmapSize + self.bitmapLength
         self.currentPageIndex = currentPageIndex
 
-    def read(self, index: int) -> list[int] or None:
+    def read(self, index: int) -> bytes or None:
         # check bitmap the given location is available
         bitmap = Bitmap(self.data[0], bitmapSize=self.bitmapSize)
         if (bitmap.get(index, findFreeSpace=True)):
