@@ -1,0 +1,1 @@
+rm data/data-0.bin && touch data/data-0.bin && python3 main.py < testcase.txt

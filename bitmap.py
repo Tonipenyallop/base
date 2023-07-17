@@ -1,6 +1,7 @@
 class Bitmap:
-    def __init__(self, data=0b0) -> None:
+    def __init__(self, data=0b0, bitmapSize=8) -> None:
         self.data = data
+        self.bitmapSize = bitmapSize
 
     def get(self, index: int, findFreeSpace: bool = False) -> bool:
         if not findFreeSpace:
@@ -9,6 +10,8 @@ class Bitmap:
             return (self.data >> index) & 1 == 0
 
     def set(self, index: int) -> None:
+        assert index < self.bitmapSize
+
         self.data |= 1 << index
 
     def unset(self, index: int) -> None:
@@ -23,8 +26,7 @@ class Bitmap:
         self.data &= ~(1 << index)
 
     def nextFreeIndex(self) -> int:
-        bitLength = 8
-        for index in range(bitLength):
+        for index in range(self.bitmapSize):
             if self.get(index, findFreeSpace=True):
                 return index
         return -1

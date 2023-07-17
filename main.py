@@ -1,56 +1,82 @@
+from fileManager import FileManager
 from page import Page
 print('DB initialized')
 
-headerLength = 3
-recordLength = 5
 file = open('data/data-0.bin', 'rb+')
+fileManager = FileManager(file)
 
-readFile = bytearray(file.read(41))
-if len(readFile) < 41:
-    numberOfZero = 41 - len(readFile)
-    readFile.extend([0]*numberOfZero)
+wordLength = 5
+bitmapLength = 1
+bitmapSize = 8
 
-print(f"database:{readFile}")
+pageLength = wordLength * bitmapSize + bitmapLength
 
-page = Page(readFile)
+unfilledPageIndex, unfilledPage = fileManager.getUnfilledIndexAndPage()
+
 # header 1byte
 # each record = 5 length
 # number of records = 8
 # how many of bytes => 41
 while True:
-
-    inputValue = input()
+    try:
+        inputValue = input()
+    except EOFError:
+        break
 
     if inputValue == 'fini':
         break
 
     if inputValue[:4] == 'read':
-        index = int(inputValue[5])
-        if index not in range(8):
+        pageIndex = int(inputValue[5])
+        rowIndex = int(inputValue[7])
+
+        if rowIndex not in range(8):
             print('input range must be from 0 to 7')
             continue
-        print(page.read(index))
+
+        page = fileManager.getPage(pageIndex)
+        record = page.read(rowIndex)
+
+        if not record:
+            print('record not found')
+        else:
+            print(record.decode())
 
     if inputValue[:6] == 'delete':
-        index = int(inputValue[7])
-        # for local memory
-        page.delete(index)
+        pageIndex = int(inputValue[7])
+        rowIndex = int(inputValue[9])
+        # 1. get the page
+        unfilledPage = fileManager.getPage(pageIndex)
+        # 1.5 update unfilledPageIndex
+        unfilledPageIndex, _ = fileManager.getUnfilledIndexAndPage()
+        # 2. delete item at index
+        unfilledPage.delete(rowIndex)
 
         # for DB
-        file.seek(0)
-        file.write(page.data)
-        print(f"index {index} was deleted successfully")
+        # 1. calculate the unfilledPage index of file
+        startPageIndex = pageLength * pageIndex
+        # 2. move pointer
+        file.seek(startPageIndex)
+        #  3. overwrite bitmap in unfilledPage
+        file.write(unfilledPage.data)
+        print(f"{pageIndex}:{rowIndex} was deleted successfully")
 
     if inputValue[:5] == 'write':
+        unfilledPageIndex, unfilledPage = fileManager.getUnfilledIndexAndPage()
         writeValue = inputValue[6:]
         inputAsBytes = bytearray(writeValue, encoding='utf-8')
         # for local memory
-        if page.write(inputAsBytes) == -1:
-            print('no space available')
-            break
+        record = unfilledPage.write(inputAsBytes)
+        if record == -1:
+            data = bytearray(pageLength)
+            unfilledPage = Page(data, wordLength, bitmapLength, bitmapSize)
+            record = unfilledPage.write(inputAsBytes)
+            # todo taesu 1. needs to update new page index to be latest
+            unfilledPageIndex += 1
+
+        print(f'{unfilledPageIndex}:{record}')
 
         # for DB
-        file.seek(0)
-        file.write(page.data)
-        print("page.data")
-        print(page.data)
+        startPageIndex = unfilledPageIndex * pageLength
+        file.seek(startPageIndex)
+        file.write(unfilledPage.data)
