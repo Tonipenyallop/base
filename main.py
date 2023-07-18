@@ -53,12 +53,7 @@ while True:
         unfilledPage.delete(rowIndex)
 
         # for DB
-        # 1. calculate the unfilledPage index of file
-        startPageIndex = pageLength * pageIndex
-        # 2. move pointer
-        file.seek(startPageIndex)
-        #  3. overwrite bitmap in unfilledPage
-        file.write(unfilledPage.data)
+        fileManager.deletePage(pageIndex, unfilledPage)
         print(f"{pageIndex}:{rowIndex} was deleted successfully")
 
     if inputValue[:5] == 'write':
