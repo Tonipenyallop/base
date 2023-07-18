@@ -83,6 +83,4 @@ while True:
 
         # for DB
         # 3. update DB
-        startPageIndex = unfilledPageIndex * pageLength
-        file.seek(startPageIndex)
-        file.write(unfilledPage.data)
+        fileManager.writePage(unfilledPageIndex, unfilledPage)

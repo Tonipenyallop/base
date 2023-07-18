@@ -26,8 +26,10 @@ class FileManager:
                     bitmapLength, bitmapSize)
         return page
 
-    def writePage(self, index, page) -> None:
-        pass
+    def writePage(self, index: int, page: Page) -> None:
+        startPageIndex = index * self.pageLength
+        self.file.seek(startPageIndex)
+        self.file.write(page.data)
 
     def getUnfilledIndexAndPage(self) -> tuple[int, Page]:
         unfilledPageIndex = 0
