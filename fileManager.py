@@ -30,25 +30,3 @@ class FileManager:
         startPageIndex = index * self.pageLength
         self.file.seek(startPageIndex)
         self.file.write(page.data)
-
-    def deletePage(self, index: int, page: Page):
-        # 1. calculate the unfilledPage index of file
-        startPageIndex = self.pageLength * index
-        # 2. move pointer
-        self.file.seek(startPageIndex)
-        #  3. overwrite bitmap in unfilledPage
-        self.file.write(page.data)
-
-    def getUnfilledIndexAndPage(self) -> tuple[int, Page]:
-        unfilledPageIndex = 0
-        unfilledPage = None
-        # while we haven't found the page that we're looking for
-        while True:
-            # read the page from the file for the current index
-            unfilledPage = self.getPage(unfilledPageIndex)
-
-            # check to see if the page is full
-            if (unfilledPage.hasFreeSpace()):
-                return [unfilledPageIndex, unfilledPage]
-            else:
-                unfilledPageIndex += 1
