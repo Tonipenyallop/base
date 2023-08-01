@@ -1,6 +1,7 @@
 from fileManager import FileManager
 from page import Page
 from pageBuffer import PageBuffer
+from fileLogger import FileLogger
 import signal
 import sys
 import os.path
@@ -30,15 +31,9 @@ def getUnfilledIndexAndPage(fileManager: FileManager) -> tuple[int, Page]:
 
 
 file = open('data/data-0.bin', 'rb+')
-fileManager = FileManager(file)
+fileLogger = FileLogger(file)
+fileManager = FileManager(fileLogger)
 pageBuffer = PageBuffer(fileManager)
-# pageBuffer = fileManager
-
-# wordLength = 5
-# bitmapLength = 1
-# bitmapSize = 8
-
-# pageLength = wordLength * bitmapSize + bitmapLength
 
 unfilledPageIndex, unfilledPage = getUnfilledIndexAndPage(fileManager)
 
@@ -46,6 +41,7 @@ unfilledPageIndex, unfilledPage = getUnfilledIndexAndPage(fileManager)
 def seeYa(signum, frame):
     pageBuffer.flush()
     print('see ya')
+    pageBuffer.fileManager.fileLogger.close()
     sys.exit(0)
 
 
@@ -106,6 +102,7 @@ while True:
         # for local memory
         # 1. check bitmap is full or not. if it's full,
         record = unfilledPage.write(inputAsBytes)
+        print(f"record : {record}")
         if record == -1:
             data = bytearray(pageLength)
             # 1.a. create new page
@@ -114,23 +111,25 @@ while True:
             record = unfilledPage.write(inputAsBytes)
             # 1.c update index as new page is created
             unfilledPageIndex += 1
-        # 2. after adding data and page is full,
 
+        print(f'{unfilledPageIndex}:{record}-{writeValue}')
+
+        # 2. after adding data and page is full,
         if not unfilledPage.hasFreeSpace():
+            # todo taesu why adding to next page index 7?
             # 2.a flush
             pageBuffer.currentPageIndex = unfilledPageIndex
             pageBuffer.currentPage = unfilledPage
             pageBuffer.flush()
-            # pageBuffer.writePage(unfilledPageIndex,
-            #                      unfilledPage)
-            # 2.b update page index and page
+
+            # # 2.b update page index and page
             unfilledPageIndex, unfilledPage = getUnfilledIndexAndPage(
                 fileManager)
 
-        print(f'{unfilledPageIndex}:{record}-{writeValue}')
         # for DB
         # 3. update DB
         pageBuffer.writePage(unfilledPageIndex, unfilledPage)
 
 # before exiting code, add to db
 pageBuffer.flush()
+pageBuffer.fileManager.fileLogger.close()

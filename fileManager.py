@@ -1,3 +1,4 @@
+from fileLogger import FileLogger
 from io import FileIO
 from page import Page
 wordLength = 5
@@ -6,8 +7,8 @@ bitmapSize = 8
 
 
 class FileManager:
-    def __init__(self, file: FileIO) -> None:
-        self.file = file
+    def __init__(self, fileLogger: FileLogger) -> None:
+        self.fileLogger = fileLogger
         self.wordLength = 5
         self.bitmapLength = 1
         self.bitmapSize = 8
@@ -15,9 +16,10 @@ class FileManager:
 
     def getPage(self, pageIndex) -> Page:
         startPageIndex = pageIndex * self.pageLength
-        self.file.seek(startPageIndex)
+        self.fileLogger.seek(startPageIndex)
         # 1. get the whole page with page index
-        data = bytearray(self.file.read(self.pageLength + self.bitmapLength))
+        data = bytearray(self.fileLogger.read(
+            self.pageLength + self.bitmapLength))
 
         # 2. fill out with zero if page is not filled
         numberOfZero = self.pageLength - len(data)
@@ -28,5 +30,5 @@ class FileManager:
 
     def writePage(self, index: int, page: Page) -> None:
         startPageIndex = index * self.pageLength
-        self.file.seek(startPageIndex)
-        self.file.write(page.data)
+        self.fileLogger.seek(startPageIndex)
+        self.fileLogger.write(page.data)
