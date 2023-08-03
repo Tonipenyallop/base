@@ -11,14 +11,17 @@ class FileLogger:
 
     # 2. implements all of the file methods we use
     def read(self, startIndex: int):
+        print("SLOW OPERATION: READ")
         self.readCount += 1
         return self.file.read(startIndex)
 
     def write(self, data: bytes):
+        print("SLOW OPERATION: WRITE")
         self.writeCount += 1
         return self.file.write(data)
 
     def seek(self, startPageIndex):
+        print("SLOW OPERATION: SEEK")
         self.seekCount += 1
         return self.file.seek(startPageIndex)
 

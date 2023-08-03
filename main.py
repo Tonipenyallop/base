@@ -1,6 +1,7 @@
 from fileManager import FileManager
 from page import Page
 from pageBuffer import PageBuffer
+from clockBuffer import ClockBuffer
 from fileLogger import FileLogger
 import signal
 import sys
@@ -12,30 +13,26 @@ bitmapSize = 8
 
 pageLength = wordLength * bitmapSize + bitmapLength
 
-
-def getUnfilledIndexAndPage(fileManager: FileManager) -> tuple[int, Page]:
-    unfilledPageIndex = 0
-    unfilledPage = None
-
-    totalPagesNumber = file.seek(0, os.SEEK_END) // pageLength
-
-    for _ in range(totalPagesNumber + 1):
-        # read the page from the file for the current index
-        unfilledPage = fileManager.getPage(unfilledPageIndex)
-
-        # check to see if the page is full
-        if (unfilledPage.hasFreeSpace()):
-            return [unfilledPageIndex, unfilledPage]
-        else:
-            unfilledPageIndex += 1
-
-
 file = open('data/data-0.bin', 'rb+')
 fileLogger = FileLogger(file)
 fileManager = FileManager(fileLogger)
 pageBuffer = PageBuffer(fileManager)
+clockBuffer = ClockBuffer(fileManager)
 
-unfilledPageIndex, unfilledPage = getUnfilledIndexAndPage(fileManager)
+# change this to control our caching policy
+# pageAccessor = fileManager
+# pageAccessor = clockBuffer
+pageAccessor = pageBuffer
+
+unfilledPageIndexes: list[int] = []
+fileLength = file.seek(0, os.SEEK_END)
+maxPageIndex = fileLength // pageLength if fileLength > 0 else -1
+print(f"maxPageIndex: {maxPageIndex}")
+for i in range(maxPageIndex + 1):
+    # read the page from the file for the current index
+    # check to see if the page is full
+    if (pageAccessor.getPage(i).hasFreeSpace()):
+        unfilledPageIndexes.append(i)
 
 
 def seeYa(signum, frame):
@@ -51,11 +48,15 @@ signal.signal(signal.SIGINT, seeYa)
 # number of records = 8
 # how many of bytes => 41
 
+unfilledPagesArray: list[Page] = []
+
 while True:
     try:
         inputValue = input()
     except EOFError:
         break
+
+    print("===== " + inputValue)
 
     if inputValue == 'fini':
         break
@@ -68,7 +69,7 @@ while True:
             print('input range must be from 0 to 7')
             continue
 
-        page = pageBuffer.getPage(pageIndex)
+        page = pageAccessor.getPage(pageIndex)
         record = page.read(rowIndex)
 
         if not record:
@@ -79,57 +80,59 @@ while True:
     if inputValue[:6] == 'delete':
         pageIndex = int(inputValue[7])
         rowIndex = int(inputValue[9])
-        # 1. get the page
-        unfilledPage = fileManager.getPage(pageIndex)
-        # 1.5 update unfilledPageIndex
-        unfilledPageIndex, _ = getUnfilledIndexAndPage(fileManager)
-        # 2. delete item at index
-        unfilledPage.delete(rowIndex)
 
-        # for DB
-        # 1. calculate the unfilledPage index of file
-        startPageIndex = pageLength * pageIndex
-        # 2. move pointer
-        file.seek(startPageIndex)
-        #  3. overwrite bitmap in unfilledPage
-        file.write(unfilledPage.data)
-        print(f"{pageIndex}:{rowIndex} was deleted successfully")
+        page = pageAccessor.getPage(pageIndex)
+        page.delete(rowIndex)
+        pageAccessor.writePage(pageIndex, page)
+
+        # the page has had things deleted so there is now space
+        if pageIndex not in unfilledPageIndexes:
+            unfilledPageIndexes.append(pageIndex)
 
     if inputValue[:5] == 'write':
+        # what is the logic for finding next unfilled page and index?
+        # 1. array
+        page = None
+        pageIndex = 0
+        # Delete logic
+        # 2. if deleted current page which is full, add to the array
+        # 2.5. if deleted current page which is NOT full, do NOTHING
+
+        # Wrtie logic
+        # if current page is full, update unfilled page to be next page
+        # 3. after adding to the memory and
+        # if len(unfilledPagesArray) > 0:
         writeValue = inputValue[6:]
         inputAsBytes = bytearray(writeValue, encoding='utf-8')
-
+        print(f"unfilledPageIndexes {unfilledPageIndexes}")
         # for local memory
-        # 1. check bitmap is full or not. if it's full,
-        record = unfilledPage.write(inputAsBytes)
-        print(f"record : {record}")
-        if record == -1:
+
+        # whaat is unfilled page?
+        # 1. completely new page if the data no longer contains available free space
+        # 2. first element of array if it is NOT empty
+        if len(unfilledPageIndexes) == 0:
+
             data = bytearray(pageLength)
-            # 1.a. create new page
-            unfilledPage = Page(data, wordLength, bitmapLength, bitmapSize)
-            # 1.b. insert new data to local memory
-            record = unfilledPage.write(inputAsBytes)
-            # 1.c update index as new page is created
-            unfilledPageIndex += 1
+            page = Page(data, wordLength, bitmapLength, bitmapSize)
 
-        print(f'{unfilledPageIndex}:{record}-{writeValue}')
+            maxPageIndex += 1
+            pageIndex = maxPageIndex
 
-        # 2. after adding data and page is full,
-        if not unfilledPage.hasFreeSpace():
-            # todo taesu why adding to next page index 7?
-            # 2.a flush
-            pageBuffer.currentPageIndex = unfilledPageIndex
-            pageBuffer.currentPage = unfilledPage
-            pageBuffer.flush()
+            unfilledPageIndexes.append(pageIndex)
+        else:
+            pageIndex = unfilledPageIndexes.pop()
+            page = pageAccessor.getPage(pageIndex)
+        record = page.write(inputAsBytes)
+        if record == -1:
+            raise ValueError('unexpected fulled page')
 
-            # # 2.b update page index and page
-            unfilledPageIndex, unfilledPage = getUnfilledIndexAndPage(
-                fileManager)
+        print(f'{pageIndex}:{record}-{writeValue}')
 
         # for DB
         # 3. update DB
-        pageBuffer.writePage(unfilledPageIndex, unfilledPage)
+        pageAccessor.writePage(pageIndex, page)
+        if page.hasFreeSpace() and pageIndex not in unfilledPageIndexes:
+            unfilledPageIndexes.append(pageIndex)
 
 # before exiting code, add to db
-pageBuffer.flush()
-pageBuffer.fileManager.fileLogger.close()
+seeYa(None, None)

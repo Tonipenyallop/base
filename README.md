@@ -1,3 +1,7 @@
+# 2023.8/3 18:32
+
+self.readCount:65, self.seekCount:76, self.writeCount:11
+
 # Video Links
 
 - https://www.youtube.com/@CS186Berkeley/playlists
