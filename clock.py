@@ -11,7 +11,7 @@ class Clock:
     # 1. if size of frame pool is not full, return because doesn't need to replace it
     # 2. if framepool contains -> return to node.pageIndex
     # 3. otherwise, run clock policy
-    def replaceFrame(self, pageIndex: int, page: Page, framePool: list[Node]):
+    def replaceFrame(self, pageIndex: int, page: Page, framePool: list[Node]) -> tuple[int, Node]:
         # check framePool is full or not
         # check all framePool nodes are None for error handling
         isAllFramePoolNone = True
@@ -44,6 +44,7 @@ class Clock:
             else:
                 # 1. replace current position of node to be incoming node
                 node = Node(pageIndex, page)
+                previousNode = framePool[self.clockHand]
                 framePool[self.clockHand] = node
 
                 # 2. updating clock hand one unit forward
@@ -51,8 +52,8 @@ class Clock:
                 if (self.clockHand == self.maxSize):
                     self.clockHand = 0
                     print(self.clockHand)
-                    return self.maxSize
+                    return [self.maxSize, previousNode]
                 else:
                     self.clockHand += 1
                     print(self.clockHand)
-                    return self.clockHand - 1
+                    return [self.clockHand - 1, previousNode]

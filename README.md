@@ -1,6 +1,11 @@
 # 2023.8/3 18:32
 
 self.readCount:65, self.seekCount:76, self.writeCount:11
+Case pageBuffer
+
+```
+self.readCount:7, self.seekCount:22, self.writeCount:15
+```
 
 # Video Links
 

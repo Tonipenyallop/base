@@ -6,3 +6,4 @@ class Node:
         self.referenceBit = True
         self.pageIndex = pageIndex
         self.page = page
+        self.isDirty = False

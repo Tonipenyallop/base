@@ -21,8 +21,8 @@ clockBuffer = ClockBuffer(fileManager)
 
 # change this to control our caching policy
 # pageAccessor = fileManager
-# pageAccessor = clockBuffer
-pageAccessor = pageBuffer
+pageAccessor = clockBuffer
+# pageAccessor = pageBuffer
 
 unfilledPageIndexes: list[int] = []
 fileLength = file.seek(0, os.SEEK_END)
@@ -35,8 +35,17 @@ for i in range(maxPageIndex + 1):
         unfilledPageIndexes.append(i)
 
 
+# # pageBuffer seeYa
+# def seeYa(signum, frame):
+#     pageBuffer.flush()
+#     print('see ya')
+#     pageBuffer.fileManager.fileLogger.close()
+#     sys.exit(0)
+
+# clockBuffer seeYa
 def seeYa(signum, frame):
-    pageBuffer.flush()
+    for pageIndex in clockBuffer.pagePool.keys():
+        clockBuffer.flush(pageIndex, clockBuffer.pagePool[pageIndex])
     print('see ya')
     pageBuffer.fileManager.fileLogger.close()
     sys.exit(0)
