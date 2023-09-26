@@ -3,7 +3,7 @@ from io import FileIO
 
 class FileLogger:
     def __init__(self, file: FileIO) -> None:
-        # 1. recieve file
+        # 1. receive file
         self.file = file
         self.readCount = 0
         self.seekCount = 0
