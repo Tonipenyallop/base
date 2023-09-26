@@ -3,9 +3,9 @@ from node import Node
 
 
 class Clock:
-    def __init__(self) -> None:
+    def __init__(self, maxSize) -> None:
         self.clockHand: int = 0
-        self.maxSize = 6
+        self.maxSize = maxSize
         self.referenceBit = True
 
     # 1. if size of frame pool is not full, return because doesn't need to replace it
@@ -25,14 +25,14 @@ class Clock:
         if isAllFramePoolNone or len(framePool) < self.maxSize:
             # updateFramePool
             framePool[insertNodeTo] = Node(pageIndex, page)
+            return [-1, -1]
 
-            return -1
         # it means framePool already contains current node
         for node in framePool:
             if node and pageIndex == node.pageIndex:
                 # update reference bit to True
                 node.referenceBit = True
-                return -1
+                return [-1, -1]
 
         while True:
             if (framePool[self.clockHand].referenceBit):

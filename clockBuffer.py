@@ -2,6 +2,7 @@ from fileManager import FileManager
 from page import Page
 from clock import Clock
 from node import Node
+from typing import Dict
 
 
 # logic
@@ -32,21 +33,20 @@ from node import Node
 
 
 class ClockBuffer:
-    def __init__(self, fileManager: FileManager) -> None:
+    def __init__(self, fileManager: FileManager, maxSize=6) -> None:
         self.fileManager = fileManager
-        self.maxSize = 6
+        self.maxSize = maxSize
         self.currentPageIndex: int = 0
         self.currentPage: Page = None
 
         # for clock algorithm
         self.pinnedPagesQueue: list[Node] = [
-        ]
-        # None, None, None, None, None, None]
+            None, None, None, None, None, None]
 
         # for storing page with pageIndex locally
-        self.pagePool = {}
-        self.poiner = None
-        self.clock = Clock()
+        self.pagePool: Dict[int, Page] = {}
+        self.pointer = None
+        self.clock = Clock(maxSize)
 
     def getPage(self, pageIndex) -> Page:
         # WHAT IS LEAST USED PAGE
@@ -83,22 +83,26 @@ class ClockBuffer:
         # 2. else store to local pagePool
 
         # what happen if current page is different from input page?
-        # 1.if not stored in local page, and pagepool is not full, add to local pagepool
-        if self.currentPageIndex not in self.pagePool and page.data[pageIndex] != 255:
-            self.pagePool[pageIndex] = page
-            self.currentPage = page
-            self.currentPageIndex = pageIndex
 
         # 2.if not stored in local page, and pagepool is full, replace it and flush
-        if self.currentPageIndex not in self.pagePool and len(self.pagePool.keys()) == 6:
+        if pageIndex not in self.pagePool and len(self.pagePool.keys()) == self.maxSize:
+            # if pageIndex not in self.pagePool and len(self.pagePool.keys()) == self.maxSize:
             [replacedFrameIndex, replacedNode] = self.clock.replaceFrame(
-                self.currentPageIndex, self.currentPage, self.pinnedPagesQueue)
+                pageIndex, page, self.pinnedPagesQueue)
+
+            #  if page was not replaced,return
+            if (replacedFrameIndex == -1 or replacedNode == -1):
+                return
+
             # for storing replaced frame to DB
             self.flush(replacedFrameIndex, replacedNode)
 
-        # 3.if it's there, update local page
-        if self.currentPageIndex in self.pagePool:
+        # 2.otherwise, there is or not, update local page
+        else:
             self.pagePool[pageIndex] = page
+        # # 4. update current page index
+        self.currentPage = page
+        self.currentPageIndex = pageIndex
 
     def flush(self, pageIndex: int, page: Page):
         # when program shut down, write current page to DB
