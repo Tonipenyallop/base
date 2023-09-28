@@ -40,10 +40,16 @@ class ClockBuffer:
         self.currentPage: Page = None
 
         # for clock algorithm
+        # order matters here(always return with same order)
         self.pinnedPagesQueue: list[Node] = [
-            None, None, None, None, None, None]
+            # None, None, None, None, None, None]
+        ]
+        # insert None to pinnedPagesQueue N(N=maxSize) times
+        # for _ in range(self.maxSize):
+        #     self.pinnedPagesQueue.append(None)
 
         # for storing page with pageIndex locally
+        # NO guarantee for key value returning same order for all the time
         self.pagePool: Dict[int, Page] = {}
         self.pointer = None
         self.clock = Clock(maxSize)
@@ -56,16 +62,18 @@ class ClockBuffer:
         if pageIndex in self.pagePool:
             return self.pagePool[pageIndex]
 
-        # otherwise I do not know this page -> update pool
-        if (len(self.pagePool.keys()) < 6):
+        # it means we don't know this page
+        # if pool is not full, update local page pool
+        if (len(self.pagePool.keys()) < self.maxSize):
             self.pagePool[pageIndex] = self.fileManager.getPage(pageIndex)
 
-        # if pool is not full, update page pool
         # otherwise, replace it
-        if len(self.pinnedPagesQueue) == self.maxSize:
+        else:
 
-            [replacedFrame, replacedNode] = self.clock.replaceFrame(
-                self.currentPageIndex, self.currentPage, self.pinnedPagesQueue)
+            # if len(self.pinnedPagesQueue) == self.maxSize:
+            # problem is here
+            self.clock.replaceFrame(
+                pageIndex, self.currentPage, self.pinnedPagesQueue)
             # self.currentPageIndex, self.pagePool[self.currentPageIndex-1], self.pinnedPagesQueue)
             return
 
@@ -95,7 +103,7 @@ class ClockBuffer:
                 return
 
             # for storing replaced frame to DB
-            self.flush(replacedFrameIndex, replacedNode)
+            self.flush(replacedFrameIndex, replacedNode.page)
 
         # 2.otherwise, there is or not, update local page
         else:
@@ -103,6 +111,7 @@ class ClockBuffer:
         # # 4. update current page index
         self.currentPage = page
         self.currentPageIndex = pageIndex
+        self.pinnedPagesQueue.append(Node(pageIndex, page))
 
     def flush(self, pageIndex: int, page: Page):
         # when program shut down, write current page to DB
