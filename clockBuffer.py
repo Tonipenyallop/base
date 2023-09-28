@@ -102,6 +102,8 @@ class ClockBuffer:
             if (replacedFrameIndex == -1 or replacedNode == -1):
                 return
 
+            # needs to remove replacedNode from pinnedPagesQueue
+            self.pinnedPagesQueue.pop(replacedFrameIndex)
             # for storing replaced frame to DB
             self.flush(replacedFrameIndex, replacedNode.page)
 
