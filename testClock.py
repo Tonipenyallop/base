@@ -40,7 +40,6 @@ class TestClock(unittest.TestCase):
         self.assertEqual(mockFileManager.writeCount, 0)
         clockBuffer.writePage(3, page3)
         self.assertEqual(mockFileManager.writeCount, 1)
-
         self.assertAlmostEqual(len(clockBuffer.pinnedPagesQueue), 3)
 
         file.close()
