@@ -54,37 +54,53 @@ class ClockBuffer:
         self.pointer = None
         self.clock = Clock(maxSize)
 
-    def getPage(self, pageIndex) -> Page:
+    def getPage(self, pageIndex: int) -> Page or None:
+        print('getPage method was called')
         # WHAT IS LEAST USED PAGE
         # use clock policy for that
 
+        # for checking input pageIndex is valid
+        # if pageIndex >= len(self.pagePool.keys()):
+        #     # pageIndex cannot be greater than size of page pool
+        #     print('first if statement')
+        #     return None
+
         # if requesting the known page return it
         if pageIndex in self.pagePool:
+            print('hola part1')
             return self.pagePool[pageIndex]
 
         # it means we don't know this page
         # if pool is not full, update local page pool
         if (len(self.pagePool.keys()) < self.maxSize):
+            print('hola part2')
             self.pagePool[pageIndex] = self.fileManager.getPage(pageIndex)
 
-        # otherwise, replace it
+        # otherwise(if pool is full), replace it
         else:
-
+            print('hola part3')
             # if len(self.pinnedPagesQueue) == self.maxSize:
             # problem is here
-            self.clock.replaceFrame(
+            [replacedFrameIndex, replacedNode] = self.clock.replaceFrame(
                 pageIndex, self.currentPage, self.pinnedPagesQueue)
-            # self.currentPageIndex, self.pagePool[self.currentPageIndex-1], self.pinnedPagesQueue)
+
+            # needs to remove replacedNode from pinnedPagesQueue
+            self.pinnedPagesQueue.pop(replacedFrameIndex)
+            # for storing replaced frame to DB
+            self.flush(replacedFrameIndex, replacedNode.page)
+
             return
 
         if self.currentPageIndex == pageIndex:
+            print('hola part4')
             return self.currentPage
 
+        print('should print till here')
+        self.pinnedPagesQueue.append(
+            Node(pageIndex, self.currentPage))
         self.pinnedPagesQueue[self.currentPageIndex].isDirty
         self.currentPageIndex = pageIndex
         self.currentPage = self.fileManager.getPage(pageIndex)
-        self.pinnedPagesQueue.append(
-            Node(pageIndex, self.currentPage))
 
     def writePage(self, pageIndex: int, page: Page) -> None:
         # 1. if stored page needs to be replaced, flush.
