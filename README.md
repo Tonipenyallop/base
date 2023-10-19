@@ -41,3 +41,8 @@ self.readCount:7, self.seekCount:22, self.writeCount:15
   - **>>** or **<<** : Bitshift
   - **|** : Bitwise or
   - **&** : Bitwise and
+
+* Cache and Buffering
+
+* - Cache is the one re-use pre-calculated result when same input is coming
+* - Buffering is like going to pluto. Instead of sending data one by one, sending at the same time when the data is full
