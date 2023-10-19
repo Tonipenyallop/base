@@ -3,6 +3,7 @@ from page import Page
 from pageBuffer import PageBuffer
 from clockBuffer import ClockBuffer
 from fileLogger import FileLogger
+from typing import Union
 from io import FileIO
 import signal
 import sys
@@ -29,18 +30,20 @@ pageAccessor = clockBuffer
 # rerunning not working
 
 
-def readPages(file: FileIO,) -> tuple[list[int], int]:
+def readPages(file: FileIO, pageLength: int, pageAccessor: Union[ClockBuffer, PageBuffer]) -> tuple[list[int], int]:
     unfilledPageIndexes: list[int] = []
     fileLength = file.seek(0, os.SEEK_END)
     maxPageIndex = fileLength // pageLength if fileLength > 0 else -1
     print(f"maxPageIndex: {maxPageIndex}")
     if (maxPageIndex >= 1):
-        for i in range(maxPageIndex + 1):
+        for i in range(maxPageIndex):
+            print(f'this is {i} time(s)')
             # read the page from the file for the current index
             # check to see if the page is full
 
             # why do pages not contain 6 of them
             page = pageAccessor.getPage(i)
+
             if not page:
                 return [unfilledPageIndexes, maxPageIndex]
 
@@ -61,7 +64,8 @@ def seeYa(signum, frame):
 def main():
     signal.signal(signal.SIGINT, seeYa)
 
-    [unfilledPageIndexes, maxPageIndex] = readPages(file)
+    [unfilledPageIndexes, maxPageIndex] = readPages(
+        file, pageLength, pageAccessor)
 
     # header 1byte
     # each record = 5 length
