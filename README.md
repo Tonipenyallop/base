@@ -1,3 +1,7 @@
+# NOTE:
+* Max char length is **5**
+* Each "Page" can store at most 5 words
+* Each Page can store **25 bytes** (5bytes(single char = 1 byte) * 5)
 # 2023.8/3 18:32
 
 self.readCount:65, self.seekCount:76, self.writeCount:11
