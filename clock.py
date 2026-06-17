@@ -1,59 +1,29 @@
-from page import Page
 from node import Node
 
 
 class Clock:
+    # The CLOCK (second-chance) replacement policy.
+    #
+    # Frames are kept in a list. A "clock hand" sweeps the list: a frame whose
+    # reference bit is set gets a second chance (bit cleared, hand advances); the
+    # first frame found with an unset reference bit is the victim. Its position
+    # in the list is returned so the caller can evict it.
     def __init__(self, maxSize) -> None:
         self.clockHand: int = 0
         self.maxSize = maxSize
-        self.referenceBit = True
 
-    # 1. if size of frame pool is not full, return because doesn't need to replace it
-    # 2. if framepool contains -> return to node.pageIndex
-    # 3. otherwise, run clock policy
-    def replaceFrame(self, pageIndex: int, page: Page, framePool: list[Node]) -> tuple[int, Node]:
-        # check framePool is full or not
-        # check all framePool nodes are None for error handling
-        isAllFramePoolNone = True
-        insertNodeTo = 0
-        for i, node in enumerate(framePool):
-            if node:
-                isAllFramePoolNone = False
-                insertNodeTo = i
-                break
-
-        if isAllFramePoolNone or len(framePool) < self.maxSize:
-            # updateFramePool
-            framePool[insertNodeTo] = Node(pageIndex, page)
-            return [-1, -1]
-
-        # it means framePool already contains current node
-        for node in framePool:
-            if node and pageIndex == node.pageIndex:
-                # update reference bit to True
-                node.referenceBit = True
-                return [-1, -1]
+    def findVictim(self, framePool: list[Node]) -> int:
+        size = len(framePool)
+        assert size > 0, "cannot evict from an empty frame pool"
 
         while True:
-            if (framePool[self.clockHand].referenceBit):
-                framePool[self.clockHand].referenceBit = False
-                if self.clockHand == self.maxSize - 1:
-                    self.clockHand = 0
-                else:
-                    self.clockHand += 1
+            self.clockHand %= size
+            node = framePool[self.clockHand]
+            if node.referenceBit:
+                # second chance: clear the bit and move on
+                node.referenceBit = False
+                self.clockHand += 1
             else:
-                # 1. replace current position of node to be incoming node
-                node = Node(pageIndex, page)
-                previousNode = framePool[self.clockHand]
-                framePool[self.clockHand] = node
-
-                # 2. updating clock hand one unit forward
-                # 2.a. framePool size is max(6) size
-                if (self.clockHand == self.maxSize):
-                    self.clockHand = 0
-                    print(self.clockHand)
-                    return [self.maxSize, previousNode]
-                else:
-                    self.clockHand += 1
-                    print(self.clockHand)
-                    return [self.clockHand - 1, previousNode]
+                # victim found; leave the hand here so that after this frame is
+                # popped the hand naturally points at the following frame
+                return self.clockHand

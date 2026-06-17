@@ -5,133 +5,80 @@ from node import Node
 from typing import Dict
 
 
-# logic
-#  able to store at most 6 pages
-
-# write
-# 1.when replace page, flush
-# 2.if current page is different from input page and current page is dirty -> flush
-
-# get
-# 1.if it needs to replace page -> flush
-# 2.if current page is different from input page and current page is dirty -> flush
-
-# condition :replace
-# 1. check page is in pool
-# 2. if so, just return
-# 3, if pool is full and input page is not in pool -> replace it
-
-# logic :replace
-# 1. create a queue
-# 2. if reference bit is unset, replace it
-# 3. else unset reference bit and move pointer to next unit
-
-# props
-# 1. pointer
-# 2. queue : list['node'] referenceBit, pageIndex, page, isDirty
-# 3. pool
-
-
 class ClockBuffer:
+    # A buffer pool holding up to `maxSize` pages in memory, using the CLOCK
+    # (second-chance) policy to choose a victim when the pool is full.
+    #
+    # Single source of truth:
+    #   - pinnedPagesQueue: the frames, in clock order (each Node carries its
+    #     pageIndex, page, reference bit and dirty bit).
+    #   - pagePool: a {pageIndex: page} mirror for O(1) lookup and flush-on-exit.
+    # The two are always kept in sync: every frame in the queue has exactly one
+    # entry in the pool, and vice versa.
     def __init__(self, fileManager: FileManager, maxSize=6) -> None:
         self.fileManager = fileManager
         self.maxSize = maxSize
+        self.pinnedPagesQueue: list[Node] = []
+        self.pagePool: Dict[int, Page] = {}
+        self.clock = Clock(maxSize)
+
+        # kept only for backward compatibility with callers that read them
         self.currentPageIndex: int = 0
         self.currentPage: Page = None
 
-        # for clock algorithm
-        # order matters here(always return with same order)
-        self.pinnedPagesQueue: list[Node] = [
-            # None, None, None, None, None, None]
-        ]
-        # insert None to pinnedPagesQueue N(N=maxSize) times
-        # for _ in range(self.maxSize):
-        #     self.pinnedPagesQueue.append(None)
-
-        # for storing page with pageIndex locally
-        # NO guarantee for key value returning same order for all the time
-        self.pagePool: Dict[int, Page] = {}
-        self.pointer = None
-        self.clock = Clock(maxSize)
+    def _frameOf(self, pageIndex: int) -> Node or None:
+        for node in self.pinnedPagesQueue:
+            if node.pageIndex == pageIndex:
+                return node
+        return None
 
     def getPage(self, pageIndex: int) -> Page or None:
-        print('getPage method was called')
-        # WHAT IS LEAST USED PAGE
-        # use clock policy for that
-
-        # for checking input pageIndex is valid
-        # if pageIndex >= len(self.pagePool.keys()):
-        #     # pageIndex cannot be greater than size of page pool
-        #     print('first if statement')
-        #     return None
-
-        # if requesting the known page return it
+        # cache hit
         if pageIndex in self.pagePool:
-            print('hola part1')
+            node = self._frameOf(pageIndex)
+            if node is not None:
+                node.referenceBit = True
             return self.pagePool[pageIndex]
 
-        # it means we don't know this page
-        # if pool is not full, update local page pool
-        if (len(self.pagePool.keys()) < self.maxSize):
-            print('hola part2')
-            self.pagePool[pageIndex] = self.fileManager.getPage(pageIndex)
-
-        # otherwise(if pool is full), replace it
-        else:
-            print('hola part3')
-            # if len(self.pinnedPagesQueue) == self.maxSize:
-            # problem is here
-            [replacedFrameIndex, replacedNode] = self.clock.replaceFrame(
-                pageIndex, self.currentPage, self.pinnedPagesQueue)
-
-            # needs to remove replacedNode from pinnedPagesQueue
-            self.pinnedPagesQueue.pop(replacedFrameIndex)
-            # for storing replaced frame to DB
-            self.flush(replacedFrameIndex, replacedNode.page)
-
-            return
-
-        if self.currentPageIndex == pageIndex:
-            print('hola part4')
-            return self.currentPage
-
-        print('should print till here')
-        self.pinnedPagesQueue.append(
-            Node(pageIndex, self.currentPage))
-        self.pinnedPagesQueue[self.currentPageIndex].isDirty
-        self.currentPageIndex = pageIndex
-        self.currentPage = self.fileManager.getPage(pageIndex)
+        # cache miss: load from disk and admit into the pool
+        page = self.fileManager.getPage(pageIndex)
+        if page is None:
+            return None
+        self._admit(pageIndex, page, isDirty=False)
+        return page
 
     def writePage(self, pageIndex: int, page: Page) -> None:
-        # 1. if stored page needs to be replaced, flush.
-        # 2. else store to local pagePool
-
-        # what happen if current page is different from input page?
-
-        # 2.if not stored in local page, and pagepool is full, replace it and flush
-        if pageIndex not in self.pagePool and len(self.pagePool.keys()) == self.maxSize:
-            # if pageIndex not in self.pagePool and len(self.pagePool.keys()) == self.maxSize:
-            [replacedFrameIndex, replacedNode] = self.clock.replaceFrame(
-                pageIndex, page, self.pinnedPagesQueue)
-
-            #  if page was not replaced,return
-            if (replacedFrameIndex == -1 or replacedNode == -1):
-                return
-
-            # needs to remove replacedNode from pinnedPagesQueue
-            self.pinnedPagesQueue.pop(replacedFrameIndex)
-            # for storing replaced frame to DB
-            self.flush(replacedFrameIndex, replacedNode.page)
-
-        # 2.otherwise, there is or not, update local page
-        else:
+        node = self._frameOf(pageIndex)
+        if node is not None:
+            # update an already-cached frame in place
+            node.page = page
+            node.referenceBit = True
+            node.isDirty = True
             self.pagePool[pageIndex] = page
-        # # 4. update current page index
-        self.currentPage = page
+        else:
+            self._admit(pageIndex, page, isDirty=True)
+
+    def _admit(self, pageIndex: int, page: Page, isDirty: bool) -> None:
+        if len(self.pinnedPagesQueue) >= self.maxSize:
+            self._evict()
+
+        node = Node(pageIndex, page)
+        node.referenceBit = True
+        node.isDirty = isDirty
+        self.pinnedPagesQueue.append(node)
+        self.pagePool[pageIndex] = page
+
         self.currentPageIndex = pageIndex
-        self.pinnedPagesQueue.append(Node(pageIndex, page))
+        self.currentPage = page
+
+    def _evict(self) -> None:
+        victimPos = self.clock.findVictim(self.pinnedPagesQueue)
+        victim = self.pinnedPagesQueue.pop(victimPos)
+        del self.pagePool[victim.pageIndex]
+        if victim.isDirty:
+            self.flush(victim.pageIndex, victim.page)
 
     def flush(self, pageIndex: int, page: Page):
-        # when program shut down, write current page to DB
-        if self.currentPage is not None:
+        # write a page back to disk
+        if page is not None:
             return self.fileManager.writePage(pageIndex, page)

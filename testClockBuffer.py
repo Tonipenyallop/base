@@ -1,4 +1,5 @@
 import unittest
+import os
 from clockBuffer import ClockBuffer
 from fileManager import FileManager
 from fileLogger import FileLogger
@@ -54,6 +55,36 @@ class TestClockBuffer(unittest.TestCase):
         assert len(clockBuffer.pagePool.keys()) == 3
 
         file.close()
+
+    def testEvictionAndReadback(self):
+        # When the pool is full and a new page is requested, the buffer must
+        # evict via CLOCK, flush the dirty victim to disk, and still serve the
+        # evicted page correctly on a later access -- without crashing.
+        path = 'testEvict.bin'
+        open(path, 'wb').close()
+        file = open(path, 'rb+')
+        clockBuffer = ClockBuffer(FileManager(FileLogger(file)), maxSize=2)
+
+        pageA = Page(data=bytearray(41))
+        pageA.write(b'aaaaa')
+        pageB = Page(data=bytearray(41))
+        pageB.write(b'bbbbb')
+        pageC = Page(data=bytearray(41))
+        pageC.write(b'ccccc')
+
+        clockBuffer.writePage(0, pageA)
+        clockBuffer.writePage(1, pageB)
+        clockBuffer.writePage(2, pageC)  # pool full -> evicts + flushes a page
+
+        self.assertEqual(len(clockBuffer.pagePool.keys()), 2)
+        self.assertEqual(len(clockBuffer.pinnedPagesQueue), 2)
+
+        # the evicted page must be re-readable from disk with its real contents
+        self.assertEqual(clockBuffer.getPage(0).read(0), b'aaaaa')
+        self.assertEqual(clockBuffer.getPage(2).read(0), b'ccccc')
+
+        file.close()
+        os.remove(path)
 
 
 if __name__ == '__main__':

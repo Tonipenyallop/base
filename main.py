@@ -23,8 +23,8 @@ clockBuffer = ClockBuffer(fileManager)
 
 # change this to control our caching policy
 # pageAccessor = fileManager
-pageAccessor = clockBuffer
 # pageAccessor = pageBuffer
+pageAccessor = clockBuffer
 
 # todo taesu :
 # rerunning not working
